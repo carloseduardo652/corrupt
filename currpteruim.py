@@ -8,11 +8,11 @@ class SistemaAnticorrupcao:
         self.root.title("Sistema Anticorrupção na Educação")
         self.root.geometry("850x800")
 
-        # Relações registradas iniciais
+        # Relações registradas iniciais (Adicionado campo qtd_real para comparação)
         self.opcoes_registro = [
-            {"id": 1, "texto": "Compra de 40 canetas simples no valor de R$ 2,00 cada (Total: R$ 80,00).", "valor_real": 80, "possiveis": [80, 200, 500]},
-            {"id": 2, "texto": "Compra de computador de R$ 3.000,00 de marca Y (Preço de mercado: R$ 3.000,00).", "valor_real": 3000, "possiveis": [3000, 8000, 9000]},
-            {"id": 3, "texto": "Compra de 5 cadernos (Preço de mercado: R$ 20,00 cada; Total: R$ 100,00).", "valor_real": 100, "possiveis": [100, 700, 600]}
+            {"id": 1, "texto": "Compra de 40 canetas simples no valor de R$ 2,00 cada (Total: R$ 80,00).", "valor_real": 80, "qtd_real": 40, "possiveis": [80, 200, 500]},
+            {"id": 2, "texto": "Compra de computador de R$ 3.000,00 de marca Y (Preço de mercado: R$ 3.000,00).", "valor_real": 3000, "qtd_real": 1, "possiveis": [3000, 8000, 9000]},
+            {"id": 3, "texto": "Compra de 5 cadernos (Preço de mercado: R$ 20,00 cada; Total: R$ 100,00).", "valor_real": 100, "qtd_real": 5, "possiveis": [100, 700, 600]}
         ]
         
         self.respostas_fixas = {} 
@@ -32,11 +32,9 @@ class SistemaAnticorrupcao:
     def mostrar_pagina_inicial(self):
         self.limpar_tela()
         
-        # Título Principal
         tk.Label(self.container, text="SISTEMA ANTICORRUPÇÃO NA EDUCAÇÃO", 
                  font=("Arial", 18, "bold"), fg="#2c3e50").pack(pady=(0, 20))
         
-        # Texto Explicativo Principal
         texto_principal = (
             "Este programa educacional anticorrupção tem como objetivo melhorar a eficiência na aplicação dos recursos financeiros. "
             "As regras para o funcionamento desse sistema incluem a notificação, em tempo real, de quem envia e de quem recebe o dinheiro. "
@@ -49,7 +47,6 @@ class SistemaAnticorrupcao:
         tk.Message(self.container, text=texto_principal, width=750, justify="left", 
                    font=("Arial", 11), aspect=200).pack(pady=10)
 
-        # Texto sobre os Grupos
         texto_grupos = (
             "Os fiscalizadores universais: a intenção de 6 dias ser composto por 6 grupos de fiscalizadores no total seria para "
             "dificultar a tentativa de concordar com a corrupção. Exemplo: se os grupos 1, 2 e 3 concordarem com a corrupção, "
@@ -59,7 +56,6 @@ class SistemaAnticorrupcao:
         tk.Message(self.container, text=texto_grupos, width=750, fg="#2980b9", 
                    font=("Arial", 11, "italic")).pack(pady=10)
 
-        # Informações de Senha (Destaque)
         info_senhas = (
             "Informação do programa: a senha da universidade/governo é 123. "
             "Já a senha dos grupos fiscalizados é: Dia 1 é 'a', Dia 2 é 'b', Dia 3 é 'c', Dia 4 é 'd', Dia 5 é 'e' e Dia 6 é 'f'."
@@ -67,7 +63,6 @@ class SistemaAnticorrupcao:
         tk.Label(self.container, text=info_senhas, font=("Arial", 10, "bold"), 
                  fg="#c0392b", wraplength=750).pack(pady=20)
 
-        # Botões de Navegação
         btn_frame = tk.Frame(self.container)
         btn_frame.pack(pady=10)
 
@@ -94,16 +89,22 @@ class SistemaAnticorrupcao:
     def fiscalizar_opcao(self, opcao):
         id_op = opcao['id']
         if id_op not in self.respostas_fixas:
-            self.respostas_fixas[id_op] = random.choice(opcao['possiveis'])
+            # Simulação: se não auditado, escolhe valor e mantém a quantidade real para o teste
+            self.respostas_fixas[id_op] = {"valor": random.choice(opcao['possiveis']), "qtd": opcao['qtd_real']}
         
-        valor_retornado = self.respostas_fixas[id_op]
+        resultado = self.respostas_fixas[id_op]
         
-        if valor_retornado == "ERRO_DIVERGENCIA":
+        if resultado == "ERRO_DIVERGENCIA":
             messagebox.showerror("ALERTA DE SEGURANÇA", "CORRUPÇÃO DETECTADA: Houve divergência entre os grupos fiscalizadores!")
             return
 
-        status = "COMPRA SEM CORRUPÇÃO" if valor_retornado == opcao['valor_real'] else "CORRUPÇÃO DETECTADA (Superfaturamento)"
-        messagebox.showinfo("Resultado da Fiscalização", f"Valor Auditado: R$ {valor_retornado:.2f}\nStatus: {status}")
+        # Alteração: agora checa se valor E quantidade são idênticos ao real
+        if resultado['valor'] == opcao['valor_real'] and resultado['qtd'] == opcao['qtd_real']:
+            status = "COMPRA SEM CORRUPÇÃO"
+        else:
+            status = "CORRUPÇÃO DETECTADA (Superfaturamento ou divergência de quantidade)"
+            
+        messagebox.showinfo("Resultado da Fiscalização", f"Valor Auditado: R$ {resultado['valor']:.2f}\nQuantidade Auditada: {resultado['qtd']}\nStatus: {status}")
 
     def pagina_governo(self):
         self.limpar_tela()
@@ -130,19 +131,21 @@ class SistemaAnticorrupcao:
             return
         try:
             total = float(self.entries["total"].get())
-            texto_corrido = f"{self.entries['acao'].get()} de {self.entries['qtd'].get()} {self.entries['prod'].get()} no valor total de R$ {total:.2f}"
+            qtd = int(self.entries["qtd"].get())
+            texto_corrido = f"{self.entries['acao'].get()} de {qtd} {self.entries['prod'].get()} no valor total de R$ {total:.2f}"
             
             nova_op = {
                 "id": len(self.opcoes_registro) + 1,
                 "texto": texto_corrido,
                 "valor_real": total,
-                "possiveis": [total, total * 1.5, total * 2.0] # Simulação de valores que podem aparecer na fiscalização
+                "qtd_real": qtd,
+                "possiveis": [total, total * 1.5, total * 2.0]
             }
             self.opcoes_registro.append(nova_op)
-            messagebox.showinfo("Sucesso", f"Gasto ID {nova_op['id']} registrado e enviado para fiscalização!")
+            messagebox.showinfo("Sucesso", f"Gasto ID {nova_op['id']} registrado!")
             self.mostrar_pagina_inicial()
         except ValueError:
-            messagebox.showerror("Erro", "O valor total deve ser um número (use ponto para decimais).")
+            messagebox.showerror("Erro", "O valor total e quantidade devem ser numéricos.")
 
     def pagina_grupos(self):
         self.limpar_tela()
@@ -159,6 +162,11 @@ class SistemaAnticorrupcao:
         tk.Label(self.container, text="Senha do Grupo:").pack()
         self.ent_senha_grp = tk.Entry(self.container, show="*")
         self.ent_senha_grp.pack(pady=2)
+
+        # Alteração: Campo Quantidade adicionado
+        tk.Label(self.container, text="Quantidade Encontrada:").pack()
+        self.ent_qtd_grp = tk.Entry(self.container)
+        self.ent_qtd_grp.pack(pady=2)
         
         tk.Label(self.container, text="Valor encontrado em mercado (R$):").pack()
         self.ent_valor = tk.Entry(self.container)
@@ -174,14 +182,15 @@ class SistemaAnticorrupcao:
             try:
                 id_alvo = int(self.ent_id_alvo.get())
                 valor = float(self.ent_valor.get())
+                qtd = int(self.ent_qtd_grp.get())
                 if id_alvo not in self.valores_temp_grupos:
                     self.valores_temp_grupos[id_alvo] = {}
-                self.valores_temp_grupos[id_alvo][dia] = valor
-                messagebox.showinfo("Sucesso", f"Relatório do Dia {dia} salvo com sucesso para o ID {id_alvo}.")
+                self.valores_temp_grupos[id_alvo][dia] = {"valor": valor, "qtd": qtd}
+                messagebox.showinfo("Sucesso", f"Relatório do Dia {dia} salvo com sucesso.")
             except ValueError:
-                messagebox.showerror("Erro", "Verifique se o ID e o Valor são numéricos.")
+                messagebox.showerror("Erro", "Verifique se ID, Valor e Quantidade são numéricos.")
         else:
-            messagebox.showerror("Erro", "Senha do grupo para este dia está incorreta.")
+            messagebox.showerror("Erro", "Senha do grupo incorreta.")
 
     def validar_e_aplicar(self):
         try:
@@ -189,20 +198,19 @@ class SistemaAnticorrupcao:
             dias_preenchidos = self.valores_temp_grupos.get(id_alvo, {})
             
             if len(dias_preenchidos) < 6:
-                faltam = 6 - len(dias_preenchidos)
-                messagebox.showwarning("Aviso", f"Ainda faltam {faltam} grupos registrarem seus dados para completar os 6 dias.")
+                messagebox.showwarning("Aviso", f"Ainda faltam {6 - len(dias_preenchidos)} grupos.")
                 return
             
-            valores = list(dias_preenchidos.values())
-            # Se houver qualquer diferença entre os 6 grupos, marca como divergência (corrupção)
-            if len(set(valores)) > 1:
+            dados = list(dias_preenchidos.values())
+            # Verifica se todos os 6 grupos enviaram exatamente o mesmo valor e quantidade
+            if any(d != dados[0] for d in dados):
                 self.respostas_fixas[id_alvo] = "ERRO_DIVERGENCIA"
-                messagebox.showwarning("DIVERGÊNCIA", "Os grupos reportaram valores diferentes! O sistema travou a operação por suspeita de fraude.")
+                messagebox.showwarning("DIVERGÊNCIA", "Os grupos reportaram dados diferentes!")
             else:
-                self.respostas_fixas[id_alvo] = valores[0]
-                messagebox.showinfo("Sucesso", f"Fiscalização concluída. Valor de R$ {valores[0]:.2f} validado por todos os grupos.")
+                self.respostas_fixas[id_alvo] = dados[0]
+                messagebox.showinfo("Sucesso", "Fiscalização validada por todos os grupos.")
             
-            self.valores_temp_grupos[id_alvo] = {} # Limpa temporários
+            self.valores_temp_grupos[id_alvo] = {} 
         except ValueError:
             messagebox.showerror("Erro", "ID inválido.")
 

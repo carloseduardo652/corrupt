@@ -8,7 +8,7 @@ class SistemaAnticorrupcao:
         self.root.title("Sistema Anticorrupção na Educação")
         self.root.geometry("850x800")
 
-        # Relações registradas iniciais (Adicionado campo qtd_real para comparação)
+        # Relações registradas iniciais
         self.opcoes_registro = [
             {"id": 1, "texto": "Compra de 40 canetas simples no valor de R$ 2,00 cada (Total: R$ 80,00).", "valor_real": 80, "qtd_real": 40, "possiveis": [80, 200, 500]},
             {"id": 2, "texto": "Compra de computador de R$ 3.000,00 de marca Y (Preço de mercado: R$ 3.000,00).", "valor_real": 3000, "qtd_real": 1, "possiveis": [3000, 8000, 9000]},
@@ -17,8 +17,10 @@ class SistemaAnticorrupcao:
         
         self.respostas_fixas = {} 
         self.valores_temp_grupos = {} 
+        self.pesquisa_mercado = {} # Armazena dados do pesquisador
         
         self.senha_governo = "123"
+        self.senha_pesquisador = "456"
         self.senhas_grupos = {"1": "a", "2": "b", "3": "c", "4": "d", "5": "e", "6": "f"}
 
         self.container = tk.Frame(self.root)
@@ -58,7 +60,8 @@ class SistemaAnticorrupcao:
 
         info_senhas = (
             "Informação do programa: a senha da universidade/governo é 123. "
-            "Já a senha dos grupos fiscalizados é: Dia 1 é 'a', Dia 2 é 'b', Dia 3 é 'c', Dia 4 é 'd', Dia 5 é 'e' e Dia 6 é 'f'."
+            "Já a senha dos grupos fiscalizados é: Dia 1 é 'a', Dia 2 é 'b', Dia 3 é 'c', Dia 4 é 'd', Dia 5 é 'e' e Dia 6 é 'f'. "
+            "e a senha de pesquisador de mercado é 456."
         )
         tk.Label(self.container, text=info_senhas, font=("Arial", 10, "bold"), 
                  fg="#c0392b", wraplength=750).pack(pady=20)
@@ -72,6 +75,39 @@ class SistemaAnticorrupcao:
                   width=40, bg="#ecf0f1").pack(pady=5)
         tk.Button(btn_frame, text="Avançar como Grupo de Fiscalização", command=self.pagina_grupos, 
                   width=40, bg="#ecf0f1").pack(pady=5)
+        tk.Button(btn_frame, text="Avançar como Pesquisador de Mercado", command=self.pagina_pesquisador, 
+                  width=40, bg="#ecf0f1").pack(pady=5)
+
+    def pagina_pesquisador(self):
+        self.limpar_tela()
+        tk.Label(self.container, text="Área do Pesquisador de Mercado", font=("Arial", 14, "bold")).pack(pady=20)
+        
+        tk.Label(self.container, text="Qual é a senha de acesso?").pack(pady=5)
+        self.ent_senha_pesquisa = tk.Entry(self.container, width=50, show="*")
+        self.ent_senha_pesquisa.pack(pady=5)
+
+        tk.Label(self.container, text="Qual opção você escolhe para definir preço total de mercado?").pack(pady=5)
+        self.ent_opcao_pesquisa = tk.Entry(self.container, width=50)
+        self.ent_opcao_pesquisa.pack(pady=5)
+        
+        tk.Label(self.container, text="Qual foi o valor total em reais das quantidades adquiridas da opção que você escolheu anteriormente?").pack(pady=5)
+        self.ent_valor_pesquisa = tk.Entry(self.container, width=50)
+        self.ent_valor_pesquisa.pack(pady=5)
+        
+        tk.Button(self.container, text="Enviar Pesquisa", command=self.validar_pesquisa, bg="#27ae60", fg="white").pack(pady=20)
+        tk.Button(self.container, text="Voltar", command=self.mostrar_pagina_inicial).pack()
+
+    def validar_pesquisa(self):
+        if self.ent_senha_pesquisa.get() == self.senha_pesquisador:
+            try:
+                id_sel = int(self.ent_opcao_pesquisa.get())
+                valor_pesq = float(self.ent_valor_pesquisa.get())
+                self.pesquisa_mercado[id_sel] = valor_pesq
+                messagebox.showinfo("Sucesso", "Pesquisa enviada.")
+            except ValueError:
+                messagebox.showerror("Erro", "ID e Valor devem ser numéricos.")
+        else:
+            messagebox.showerror("Erro", "Senha de acesso incorreta!")
 
     def pagina_aluno(self):
         self.limpar_tela()
@@ -88,8 +124,17 @@ class SistemaAnticorrupcao:
 
     def fiscalizar_opcao(self, opcao):
         id_op = opcao['id']
+        
+        # Alteração: Lógica de Pesquisa de Mercado influenciando o Status
+        valor_pesquisador = self.pesquisa_mercado.get(id_op)
+        if valor_pesquisador is not None and valor_pesquisador == opcao['valor_real']:
+            msg_pesquisa = "dados aceito perante pesquisa de mercado"
+            status_pesquisa = "SEM CORRUPÇÃO"
+        else:
+            msg_pesquisa = "dados estranho perante pesquisa de mercado"
+            status_pesquisa = "CORRUPÇÃO DETECTADA"
+
         if id_op not in self.respostas_fixas:
-            # Simulação: se não auditado, escolhe valor e mantém a quantidade real para o teste
             self.respostas_fixas[id_op] = {"valor": random.choice(opcao['possiveis']), "qtd": opcao['qtd_real']}
         
         resultado = self.respostas_fixas[id_op]
@@ -98,13 +143,17 @@ class SistemaAnticorrupcao:
             messagebox.showerror("ALERTA DE SEGURANÇA", "CORRUPÇÃO DETECTADA: Houve divergência entre os grupos fiscalizadores!")
             return
 
-        # Alteração: agora checa se valor E quantidade são idênticos ao real
-        if resultado['valor'] == opcao['valor_real'] and resultado['qtd'] == opcao['qtd_real']:
-            status = "COMPRA SEM CORRUPÇÃO"
+        # Status final baseado tanto na auditoria quanto na pesquisa de mercado
+        if resultado['valor'] == opcao['valor_real'] and resultado['qtd'] == opcao['qtd_real'] and status_pesquisa == "SEM CORRUPÇÃO":
+            status_final = "COMPRA SEM CORRUPÇÃO"
         else:
-            status = "CORRUPÇÃO DETECTADA (Superfaturamento ou divergência de quantidade)"
+            status_final = "CORRUPÇÃO DETECTADA (Superfaturamento, divergência ou pesquisa estranha)"
             
-        messagebox.showinfo("Resultado da Fiscalização", f"Valor Auditado: R$ {resultado['valor']:.2f}\nQuantidade Auditada: {resultado['qtd']}\nStatus: {status}")
+        messagebox.showinfo("Resultado da Fiscalização", 
+                            f"Valor Auditado: R$ {resultado['valor']:.2f}\n"
+                            f"Quantidade Auditada: {resultado['qtd']}\n"
+                            f"Pesquisa de Mercado: {msg_pesquisa}\n"
+                            f"Status: {status_final}")
 
     def pagina_governo(self):
         self.limpar_tela()
@@ -163,7 +212,6 @@ class SistemaAnticorrupcao:
         self.ent_senha_grp = tk.Entry(self.container, show="*")
         self.ent_senha_grp.pack(pady=2)
 
-        # Alteração: Campo Quantidade adicionado
         tk.Label(self.container, text="Quantidade Encontrada:").pack()
         self.ent_qtd_grp = tk.Entry(self.container)
         self.ent_qtd_grp.pack(pady=2)
@@ -202,7 +250,6 @@ class SistemaAnticorrupcao:
                 return
             
             dados = list(dias_preenchidos.values())
-            # Verifica se todos os 6 grupos enviaram exatamente o mesmo valor e quantidade
             if any(d != dados[0] for d in dados):
                 self.respostas_fixas[id_alvo] = "ERRO_DIVERGENCIA"
                 messagebox.showwarning("DIVERGÊNCIA", "Os grupos reportaram dados diferentes!")
